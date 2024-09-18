@@ -2,6 +2,7 @@ const express = require('express');
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
+const axios = require("axios");
 const public_users = express.Router();
 
 const doesExist = (username) => {
@@ -33,55 +34,90 @@ public_users.post("/register", (req,res) => {
 });
 
 // Get the book list available in the shop
-public_users.get('/',function (req, res) {
-    if (books) {
-        return res.status(200).send(JSON.stringify(books, null, 4));
-    } else {
-        return res.status(404).json({ message: "No books found" });
+public_users.get("/", async (req, res) => {
+    try {
+      const response = await axios.get("http://localhost:5000/books");
+      res.status(200).json(response.data);
+    } catch (error) {
+      res.status(404).send("Can't get books " + error);
     }
-});
+  });
 
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn',function (req, res) {
-    const isbn = req.params.isbn;
-    if (books[isbn]) {
-        return res.status(200).send(books[isbn]);
-    } else {
-        return res.status(404).json({ message: "No books found" });
+public_users.get("/isbn/:isbn", async (req, res) => {
+      let isbn = req.params.isbn;
+      try {
+        const response = await axios.get("http://localhost:5000/books");
+        if (response.data[isbn]) {
+          return res
+            .status(200)
+            .json(response.data[isbn]);
+        } else {
+          return res
+            .status(404)
+            .send("No book found with ISBN " + isbn);
+        }
+      } catch (error) {
+        return res
+          .status(500)
+          .send("Internal Server Error");
+      }
     }
- });
+  );
   
 // Get book details based on author
-public_users.get('/author/:author',function (req, res) {
-    const author = req.params.author;
-    let booksByAuthor = [];
-    if (books) {
-        for(let isbn in books) {
-            if(books[isbn].author == author) {
-                booksByAuthor.push(books[isbn])
-            }
+public_users.get("/author/:author", async (req, res) => {
+      let author = req.params.author;
+      let booksByAuthor = [];
+      try {
+        const response = await axios.get("http://localhost:5000/books");
+        for (let isbn in response.data) {
+          if (response.data[isbn].author == author) {
+            booksByAuthor.push(response.data[isbn]);
+          }
         }
-        return res.status(200).send(booksByAuthor);
-    } else {
-        return res.status(404).json({ message: "No books found" });
+        if (booksByAuthor.length > 0) {
+          return res
+            .status(200)
+            .json(booksByAuthor);
+        } else {
+          return res
+            .status(404)
+            .send("No book found with author " + author);
+        }
+      } catch (error) {
+        return res
+          .status(500)
+          .send("Internal Server Error");
+      }
     }
-});
+  );
 
 // Get all books based on title
-public_users.get('/title/:title',function (req, res) {
-    const title = req.params.title;
-    let booksByTitle = [];
-    if (books) {
-        for(let isbn in books) {
-            if(books[isbn].title == title) {
-                booksByTitle.push(books[isbn])
-            }
+public_users.get("/title/:title", async (req, res) => {
+      let title = req.params.title;
+      let booksByTitle = [];
+      try {
+        const response = await axios.get("http://localhost:5000/books");
+        for (let isbn in response.data) {
+          if (response.data[isbn].title == title) {
+            booksByTitle.push(response.data[isbn]);
+          }
         }
-        return res.status(200).send(booksByTitle);
-    } else {
-        return res.status(404).json({ message: "No books found" });
+        if (booksByTitle.length > 0) {
+          return res.status(200).json(booksByTitle);
+        } else {
+          return res
+            .status(404)
+            .send("No book found with title " + title);
+        }
+      } catch (error) {
+        return res
+          .status(500)
+          .send("Internal Server Error");
+      }
     }
-});
+  );
 
 //  Get book review
 public_users.get('/review/:isbn',function (req, res) {
